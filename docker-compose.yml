@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules # コンテナ内のnode_modulesをホスト側で上書きしないための設定
+    environment:
+      - CHOKIDAR_USEPOLLING=true # ホットリロードを確実にするためのポーリング設定
+      # Supabaseのキーなどはここに書くか、.envファイルを読み込ませます
+      # - VITE_SUPABASE_URL=your_url
+      # - VITE_SUPABASE_ANON_KEY=your_key
+    stdin_open: true # インタラクティブモード
+    tty: true

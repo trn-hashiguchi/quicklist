@@ -1,0 +1,5 @@
+{
+  "name": "QuickList",
+  "description": "A real-time shared shopping list for families to prevent forgotten items and duplicate purchases.",
+  "requestFramePermissions": []
+}
