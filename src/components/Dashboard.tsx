@@ -110,10 +110,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       }, 4000);
     }
 
+    const updates = {
+      is_completed: !item.is_completed,
+      completed_at: !item.is_completed ? new Date().toISOString() : null
+    };
+
     // DB更新
     await supabase
       .from('shopping_items')
-      .update({ is_completed: !item.is_completed })
+      .update(updates)
       .eq('id', id);
   };
 

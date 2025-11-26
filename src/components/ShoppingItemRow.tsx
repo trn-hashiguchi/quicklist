@@ -9,6 +9,13 @@ interface ShoppingItemRowProps {
 }
 
 const ShoppingItemRow: React.FC<ShoppingItemRowProps> = ({ item, onToggle, onDelete }) => {
+  const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('ja-JP', { 
+    month: 'numeric', 
+    day: 'numeric', 
+  });
+};
   return (
     <div 
       className={`group flex items-center justify-between p-4 mb-3 rounded-xl transition-all duration-300 ${
@@ -38,10 +45,22 @@ const ShoppingItemRow: React.FC<ShoppingItemRowProps> = ({ item, onToggle, onDel
           >
             {item.text}
           </span>
-          <div className="flex items-center gap-1 text-xs text-gray-400">
-            <UserIcon size={10} />
-            <span>{item.created_by_name}</span>
+          {/* ★ 日付表示を追加 */}
+          
+          <div className='flex gap-1'>
+            <div className="flex items-center gap-0.5 text-xs text-gray-400">
+              <UserIcon size={10} />
+              <span>{item.created_by_name}</span>
+            </div>
+            <span className="text-xs text-gray-400">
+              {item.is_completed && item.completed_at
+                ? `${formatDate(item.completed_at)} 購入` // 完了時は購入日
+                : formatDate(item.created_at) // 未完了時は追加日
+              }
+            </span>
           </div>
+
+          
         </div>
       </div>
 

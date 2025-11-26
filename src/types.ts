@@ -8,9 +8,10 @@ export interface User {
 export interface ShoppingItem {
   id: string;
   text: string;
-  is_completed: boolean; // DBのカラム名に合わせました
+  is_completed: boolean;
   created_by_name: string;
   created_at: string;
+  completed_at?: string;
 }
 
 export interface AuthState {
