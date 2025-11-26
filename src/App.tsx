@@ -8,6 +8,19 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const ramuEmail = 'ramu@example.com'
+  const shintoEmail = 'shinto@example.com'
+
+  const getUserName = (email: string) => {
+    if (email === ramuEmail) {
+      return 'らむ'
+    }
+    if (email === shintoEmail) {
+      return 'しんと'
+    }
+    return '家族'
+  }
+
   useEffect(() => {
     // 1. 起動時にログイン済みかチェック
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -15,7 +28,7 @@ const App: React.FC = () => {
         setUser({
           id: session.user.id,
           email: session.user.email || '',
-          name: '家族', // 名前機能は後回し
+          name: getUserName(session.user.email || ''), // 名前機能は後回し
         });
       }
       setLoading(false);
@@ -29,7 +42,7 @@ const App: React.FC = () => {
         setUser({
           id: session.user.id,
           email: session.user.email || '',
-          name: '家族',
+          name: getUserName(session.user.email || ''),
         });
       } else {
         setUser(null);
