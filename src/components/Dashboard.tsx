@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ShoppingItem, User } from '../types';
 import ShoppingItemRow from './ShoppingItemRow';
-import { Plus, LogOut, ShoppingCart, CheckCircle2, CloudLightning, RotateCcw } from 'lucide-react';
+import { Plus, LogOut, ShoppingCart, CheckCircle2, CloudLightning, RotateCcw, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase'; // Supabase接続
 
 interface DashboardProps {
@@ -15,12 +15,40 @@ const FREQUENT_ITEMS = ['牛乳', '卵', '納豆', '豆腐', '玉ねぎ', '歯�
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [items, setItems] = useState<ShoppingItem[]>([]); // DBから取得したデータが入る
   const [newItemText, setNewItemText] = useState('');
+  const [newMemo, setNewMemo] = useState('');
+  const [isMemoInputVisible, setIsMemoInputVisible] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
   // 元に戻す機能用
   const [undoItem, setUndoItem] = useState<ShoppingItem | null>(null);
   const [showUndoToast, setShowUndoToast] = useState(false);
   const undoTimeoutRef = useRef<number | null>(null);
+
+  // メモ編集モーダル用のState
+  const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
+  const [modalMemoText, setModalMemoText] = useState('');
+
+  const openMemoEditor = (item: ShoppingItem) => {
+    setEditingItem(item);
+    setModalMemoText(item.memo || '');
+  };
+
+  const saveMemo = async () => {
+    if (!editingItem) return;
+
+    const { error } = await supabase
+      .from('shopping_items')
+      .update({ memo: modalMemoText })
+      .eq('id', editingItem.id);
+
+    if (error) {
+      alert('メモの更新に失敗しました: ' + error.message);
+    } else {
+      // 成功したらモーダルを閉じる
+      setEditingItem(null);
+    }
+  };
+
 
   // ★ データの取得とリアルタイム同期
   useEffect(() => {
@@ -62,10 +90,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const completedItems = items.filter(i => i.is_completed);
 
   // ★ アイテム追加
-  const createItem = async (text: string) => {
+  const createItem = async (text: string, memo?: string) => {
     // UIを即時更新（楽観的UI）もできますが、今回はシンプルにDB追加→自動同期に任せます
     const { error } = await supabase.from('shopping_items').insert({
       text: text,
+      memo: memo,
       is_completed: false,
       created_by_name: user.name, // '家族'など
       user_id: user.id
@@ -77,8 +106,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const addItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemText.trim()) return;
-    createItem(newItemText.trim());
+    createItem(newItemText.trim(), newMemo.trim());
     setNewItemText('');
+    setNewMemo('');
+    setIsMemoInputVisible(false);
   };
 
   const addFrequentItem = (text: string) => {
@@ -217,7 +248,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     key={item.id} 
                     item={item as any} // 型の微調整を省略するためキャスト
                     onToggle={toggleItem} 
-                    onDelete={deleteItem} 
+                    onDelete={deleteItem}
+                    onOpenMemoEditor={openMemoEditor}
                   />
                 ))}
               </div>
@@ -237,13 +269,44 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     key={item.id} 
                     item={item as any}
                     onToggle={toggleItem} 
-                    onDelete={deleteItem} 
+                    onDelete={deleteItem}
+                    onOpenMemoEditor={openMemoEditor}
                   />
                 ))}
               </div>
             </section>
           )}
         </div>
+
+        {/* Memo Edit Modal */}
+        {editingItem && (
+          <div className="fixed inset-0 bg-black/50 z-30 flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4">
+              <h2 className="font-bold text-lg text-gray-800">メモの編集</h2>
+              <textarea 
+                value={modalMemoText}
+                onChange={(e) => setModalMemoText(e.target.value)}
+                rows={4}
+                className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                placeholder={`${editingItem.text} のメモ...`}
+              />
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setEditingItem(null)}
+                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                >
+                  キャンセル
+                </button>
+                <button 
+                  onClick={saveMemo}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Footer Area */}
@@ -278,13 +341,34 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               onSubmit={addItem}
               className="flex items-center gap-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-100 focus-within:ring-2 focus-within:ring-emerald-500 transition-all"
             >
-              <input
-                type="text"
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-                placeholder="アイテムを追加 (例: 人参)"
-                className="flex-1 px-4 py-3 bg-transparent outline-none text-gray-800 placeholder-gray-400"
-              />
+              <div className="flex-1 flex flex-col">
+                <input
+                  type="text"
+                  value={newItemText}
+                  onChange={(e) => setNewItemText(e.target.value)}
+                  placeholder="アイテムを追加 (例: 人参)"
+                  className="w-full px-4 py-3 bg-transparent outline-none text-gray-800 placeholder-gray-400"
+                />
+                {isMemoInputVisible && (
+                  <input
+                    type="text"
+                    value={newMemo}
+                    onChange={(e) => setNewMemo(e.target.value)}
+                    placeholder="メモ (例: 国産のにんじん、2本)"
+                    className="w-full px-4 pt-0 pb-2 bg-transparent outline-none text-sm text-gray-600 placeholder-gray-400 animate-in fade-in slide-in-from-top-2 duration-200"
+                  />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMemoInputVisible(!isMemoInputVisible)}
+                className={`p-3 text-gray-400 rounded-xl transition-colors ${
+                  isMemoInputVisible ? 'bg-emerald-50 text-emerald-600' : 'hover:bg-gray-100'
+                }`}
+                aria-label="メモを追加"
+              >
+                <MessageSquare size={24} />
+              </button>
               <button
                 type="submit"
                 disabled={!newItemText.trim()}
